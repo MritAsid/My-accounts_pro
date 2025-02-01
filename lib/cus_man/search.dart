@@ -5,7 +5,6 @@ import 'add_transaction.dart';
 import 'add_delete.dart';
 import '../main.dart';
 import 'bdfviwo/bdf.dart';
-
 import 'dart:io';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -28,12 +27,830 @@ class _SearchClientPageState extends State<SearchClientPage> {
   List<Map<String, dynamic>> _transactions =
       []; // لتخزين العمليات المرتبطة بالاسم المدخل
   List<String> _suggestedNames = []; // قائمة الأسماء المشابهة
-  // bool _showInfoIcon = false;
-// =============================================
-  final FocusNode _nameFocusNode = FocusNode();
 
-// =============================================
+  final FocusNode _nameFocusNode = FocusNode();
+  bool _showSearchDialog = false;
+
   @override
+  void initState() {
+    super.initState();
+    _nameFocusNode.addListener(() {
+      if (_nameFocusNode.hasFocus) {
+        _nameController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _nameController.text.length),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _nameFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _searchTransactions() async {
+    FocusScope.of(context).unfocus();
+
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('يرجى إدخال اسم العميل للبحث')),
+      );
+      return;
+    }
+
+    try {
+      final databaseHelper = DatabaseHelper();
+      List<Map<String, dynamic>> transactions =
+          await databaseHelper.getOperationsByClientName(name);
+
+      setState(() {
+        _transactions = transactions;
+        _showSearchDialog = false; // إغلاق النافذة بعد البحث
+      });
+
+      if (transactions.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لم يتم العثور على عمليات لهذا العميل')),
+        );
+      }
+    } catch (error) {
+      print('Error during search: $error');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('حدث خطأ أثناء البحث')),
+      );
+    }
+  }
+
+/*   void _fetchSuggestedNames(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _suggestedNames = [];
+      });
+      return;
+    }
+
+    final names = await DatabaseHelper().getClientNames(query);
+    setState(() {
+      _suggestedNames = names;
+    });
+  }
+
+  void _showSearchDialogBox() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('بحث عن عميل'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _nameController,
+                focusNode: _nameFocusNode,
+                onChanged: _fetchSuggestedNames,
+                decoration: InputDecoration(
+                  labelText: 'اسم العميل',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ),
+              ),
+              if (_suggestedNames.isNotEmpty)
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 100),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: Colors.cyan, width: 2.0),
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  child: ListView.builder(
+                    itemCount: _suggestedNames.length,
+                    itemBuilder: (context, index) {
+                      return Column(
+                        children: [
+                          ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8.0, vertical: 0.0),
+                            title: Text(
+                              _suggestedNames[index],
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(
+                                fontSize: 16.0,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            onTap: () {
+                              setState(() {
+                                _nameController.text = _suggestedNames[index];
+                                _suggestedNames = [];
+                              });
+                              Navigator.pop(
+                                  context); // إغلاق النافذة بعد الاختيار
+                            },
+                          ),
+                          if (index < _suggestedNames.length - 1)
+                            const Divider(
+                              color: Colors.cyan,
+                              height: 0.0,
+                              thickness: 1.7,
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // إغلاق النافذة
+              },
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: _searchTransactions,
+              child: const Text('بحث'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+ */
+
+  void _fetchSuggestedNames(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _suggestedNames = [];
+      });
+      return;
+    }
+
+    final names = await DatabaseHelper().getClientNames(query);
+    setState(() {
+      _suggestedNames = names;
+    });
+  }
+
+/*   void _showSearchDialogBox() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: Dialog(
+                backgroundColor: const Color(0xFFF6F6F6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // عنوان النافذة
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        decoration: const BoxDecoration(
+                          color: Colors.cyan,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(12.0),
+                            topRight: Radius.circular(12.0),
+                          ),
+                        ),
+                        child: const Text(
+                          'بحث عن عميل',
+                          style: TextStyle(
+                            fontSize: 18.0,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+
+                      const SizedBox(height: 10.0),
+
+                      // حقل البحث عن اسم العميل
+                      _buildClientNameFieldWithSuggestions(setState),
+
+                      const SizedBox(height: 10.0),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+// ===============  انشاء الحقل والقائمة المشابهة للعميل ==================
+  Widget _buildClientNameFieldWithSuggestions(
+      void Function(void Function()) setState) {
+    return Stack(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // حقل الاسم
+              Row(
+                children: [
+                  const Text(
+                    'الاسم: ',
+                    style:
+                        TextStyle(fontSize: 18.0, fontWeight: FontWeight.w800),
+                  ),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _nameController,
+                      focusNode: _nameFocusNode,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.cyan),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide:
+                              BorderSide(color: Colors.cyan, width: 2.0),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide:
+                              BorderSide(color: Colors.cyan, width: 2.0),
+                        ),
+                        contentPadding:
+                            EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _fetchSuggestedNames(value); // تحديث القائمة المقترحة
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // قائمة العملاء المطابقة
+        if (_suggestedNames.isNotEmpty)
+          Positioned(
+            top: 60.0,
+            left: 10,
+            right: 10,
+            child: Container(
+              constraints: const BoxConstraints(maxHeight: 140),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: Colors.cyan, width: 2.0),
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const ClampingScrollPhysics(),
+                itemCount: _suggestedNames.length,
+                itemBuilder: (context, index) {
+                  return Column(
+                    children: [
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8.0,
+                          vertical: 4.0,
+                        ),
+                        title: Text(
+                          _suggestedNames[index],
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        onTap: () {
+                          setState(() {
+                            _nameController.text = _suggestedNames[index];
+                            _suggestedNames = [];
+                          });
+                        },
+                      ),
+                      if (index < _suggestedNames.length - 1)
+                        const Divider(
+                          color: Colors.cyan,
+                          height: 1.0,
+                          thickness: 1.0,
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+ */
+
+  void _showSearchDialogBox() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: Dialog(
+                backgroundColor: const Color(0xFFF6F6F6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // عنوان النافذة
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        decoration: const BoxDecoration(
+                          color: Colors.cyan,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(12.0),
+                            topRight: Radius.circular(12.0),
+                          ),
+                        ),
+                        child: const Text(
+                          'بحث عن عميل',
+                          style: TextStyle(
+                            fontSize: 18.0,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+
+                      const SizedBox(height: 10.0),
+
+                      // حقل البحث عن اسم العميل
+                      _buildClientNameFieldWithSuggestions(setState),
+
+                      const SizedBox(height: 16.0),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+// ===============  انشاء الحقل والقائمة المشابهة للعميل ==================
+  Widget _buildClientNameFieldWithSuggestions(
+      void Function(void Function()) setState) {
+    return Stack(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // حقل الاسم
+              Row(
+                children: [
+                  const Text(
+                    'الاسم: ',
+                    style:
+                        TextStyle(fontSize: 18.0, fontWeight: FontWeight.w800),
+                  ),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _nameController,
+                      focusNode: _nameFocusNode,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.cyan),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide:
+                              BorderSide(color: Colors.cyan, width: 2.0),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide:
+                              BorderSide(color: Colors.cyan, width: 2.0),
+                        ),
+                        contentPadding:
+                            EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _fetchSuggestedNames(value); // تحديث القائمة المقترحة
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 100.0), // فراغ بمقدار 130 بكسل
+
+              // زر البحث
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: ElevatedButton(
+                  onPressed: _searchTransactions,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.cyan,
+                    foregroundColor: Colors.white,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    elevation: 4,
+                  ),
+                  child: const Text(
+                    'بحث',
+                    style: TextStyle(
+                      fontSize: 18.0,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+
+              // const SizedBox(height: 80.0), // فراغ بمقدار 130 بكسل
+            ],
+          ),
+        ),
+
+        // قائمة العملاء المطابقة
+        if (_suggestedNames.isNotEmpty)
+          Positioned(
+            top: 55.0,
+            left: 10,
+            right: 60,
+            child: Container(
+              constraints: const BoxConstraints(maxHeight: 160),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: Colors.cyan, width: 2.0),
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const ClampingScrollPhysics(),
+                itemCount: _suggestedNames.length,
+                itemBuilder: (context, index) {
+                  return Column(
+                    children: [
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8.0,
+                          vertical: 4.0,
+                        ),
+                        title: Text(
+                          _suggestedNames[index],
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        onTap: () {
+                          setState(() {
+                            _nameController.text = _suggestedNames[index];
+                            _suggestedNames = [];
+                          });
+                        },
+                      ),
+                      if (index < _suggestedNames.length - 1)
+                        const Divider(
+                          color: Colors.cyan,
+                          height: 1.0,
+                          thickness: 1.0,
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _refreshTransactions() async {
+    final databaseHelper = DatabaseHelper();
+    final name = _nameController.text.trim();
+
+    final newTransactions =
+        await databaseHelper.getOperationsByClientName(name);
+    setState(() {
+      _transactions = newTransactions;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        resizeToAvoidBottomInset: false,
+        appBar: AppBar(
+          title: const Text(
+            'كشوفات الحسابات',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22.0),
+          ),
+          leading: IconButton(
+            icon: const Icon(
+              Icons.home,
+              size: 35,
+              color: Color(0xFFF26157),
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MyApp(),
+                ),
+              );
+            },
+          ),
+          backgroundColor: Colors.cyan,
+          foregroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: const Icon(
+                Icons.person,
+                size: 30,
+                color: Color.fromARGB(255, 76, 96, 245),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddDeletePage(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(
+                Icons.account_balance_wallet,
+                size: 30,
+                color: Color(0xFFFF9334),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddTransactionPage(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 18),
+          ],
+        ),
+        body: Column(
+          children: [
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    /*                    // عنوان الجدول
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 4, horizontal: 40),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.white, width: 2.0),
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.cyan,
+                      ),
+                      child: const Text(
+                        'جدول العملاء',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                */
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.cyan, width: 3),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              decoration: const BoxDecoration(
+                                color: Colors.cyan,
+                              ),
+                              padding: const EdgeInsets.all(8),
+                              child: Row(
+                                children: const [
+                                  Expanded(
+                                    flex: 3,
+                                    child: Text(
+                                      'المبلغ',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 18.0,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 5,
+                                    child: Text(
+                                      'التفاصيل',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 18.0,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      'معلومات',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 18.0,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child: ListView.builder(
+                                itemCount: _transactions.length,
+                                itemBuilder: (context, index) {
+                                  final transaction = _transactions[index];
+                                  Color iconColor =
+                                      transaction['type'] == 'إضافة'
+                                          ? Colors.red
+                                          : transaction['type'] == 'تسديد'
+                                              ? Colors.green
+                                              : Colors.blue;
+
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      color: index % 2 == 0
+                                          ? const Color(0xFFF1F1F1)
+                                          : Colors.white,
+                                      border: const Border(
+                                        bottom: BorderSide(
+                                            color: Colors.cyan, width: 2.0),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          flex: 3,
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 10,
+                                              horizontal: 10,
+                                            ),
+                                            child: Text(
+                                              transaction['amount'].toString(),
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                fontSize: 15.5,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          flex: 5,
+                                          child: Container(
+                                            decoration: const BoxDecoration(
+                                              border: Border(
+                                                left: BorderSide(
+                                                    color: Colors.cyan,
+                                                    width: 2.0),
+                                                right: BorderSide(
+                                                    color: Colors.cyan,
+                                                    width: 2.0),
+                                              ),
+                                            ),
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                vertical: 15,
+                                                horizontal: 2,
+                                              ),
+                                              child: Text(
+                                                transaction['details'],
+                                                textAlign: TextAlign.start,
+                                                style: const TextStyle(
+                                                  fontSize: 14.5,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          flex: 2,
+                                          child: IconButton(
+                                            icon: Icon(
+                                              Icons.info,
+                                              color: iconColor,
+                                            ),
+                                            onPressed: () {
+                                              _showTransactionDetails(
+                                                  transaction);
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.cyan, width: 2.0),
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.print_rounded,
+                      size: 38.0,
+                      color: Colors.blue,
+                    ),
+                    onPressed: () {
+                      _generatePDF(context);
+                    },
+                  ),
+                  FloatingActionButton(
+                    onPressed: _showSearchDialogBox,
+                    backgroundColor: Colors.cyan,
+                    child: const Icon(
+                      Icons.search,
+                      color: Colors.white,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.info_rounded,
+                      size: 38.0,
+                      color: Colors.blue,
+                    ),
+                    onPressed: _showSummary,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+/*   @override
   void initState() {
     super.initState();
 
@@ -53,9 +870,6 @@ class _SearchClientPageState extends State<SearchClientPage> {
     _nameFocusNode.dispose();
     super.dispose();
   }
-
-// =============================================
-// =============================================
 
   void _searchTransactions() async {
     FocusScope.of(context).unfocus(); // إخفاء لوحة المفاتيح
@@ -114,15 +928,6 @@ class _SearchClientPageState extends State<SearchClientPage> {
     final names = await DatabaseHelper().getClientNames(query);
     setState(() {
       _suggestedNames = names;
-    });
-  }
-
-  bool _isReady = false;
-
-// عندما تصبح جاهزة قم بتحديث الحالة
-  void _setReady() {
-    setState(() {
-      _isReady = true;
     });
   }
 
@@ -380,7 +1185,6 @@ class _SearchClientPageState extends State<SearchClientPage> {
                 ),
               ),
 
-              const SizedBox(height: 16.0),
               // عنوان الجدول
               Container(
                 padding:
@@ -457,93 +1261,6 @@ class _SearchClientPageState extends State<SearchClientPage> {
                           ],
                         ),
                       ),
-
-/*      
-
-                 Expanded(
-                        child: ListView.builder(
-                            itemCount: _transactions.length,
-                            itemBuilder: (context, index) {
-                              final transaction = _transactions[index];
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: index % 2 == 0
-                                      ? const Color(0xFFF1F1F1)
-                                      : Colors.white,
-                                  border: const Border(
-                                    bottom: BorderSide(
-                                        color: Colors.cyan, width: 2.0),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    // عمود المبلغ
-                                    Expanded(
-                                      flex: 3, // نسبة 70%
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 10,
-                                          horizontal: 10,
-                                        ),
-                                        child: Text(
-                                          transaction['amount'].toString(),
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            fontSize: 15.5,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    // عمود التفاصيل
-                                    Expanded(
-                                      flex: 5, // نسبة 70%
-                                      child: Container(
-                                        decoration: const BoxDecoration(
-                                            border: Border(
-                                          left: BorderSide(
-                                              color: Colors.cyan, width: 2.0),
-                                          right: BorderSide(
-                                              color: Colors.cyan, width: 2.0),
-                                        )),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 15,
-                                            horizontal: 2,
-                                          ),
-                                          child: Text(
-                                            transaction['details'],
-                                            textAlign: TextAlign.start,
-                                            style: const TextStyle(
-                                              fontSize: 14.5,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-
-                                    // عمود معلومات
-                                    Expanded(
-                                      flex: 2, // نسبة 30%
-
-                                      child: IconButton(
-                                        icon: const Icon(
-                                          Icons.info,
-                                          color: Colors.blue,
-                                        ),
-                                        onPressed: () {
-                                          _showTransactionDetails(transaction);
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
-                      )
-       */
-
                       Expanded(
                         child: ListView.builder(
                           itemCount: _transactions.length,
@@ -642,31 +1359,17 @@ class _SearchClientPageState extends State<SearchClientPage> {
                   ),
                 ),
               )
-
-// ===========================================================================
             ],
           ),
         ),
       ),
     );
   }
-
-// =========== =====================================================
-// =========== =====================================================
+ */
+//  ========= انشاء صفوف لتفاصيل العملية ===========
   TableRow _buildInfoRow(String title, dynamic value) {
     return TableRow(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Text(
-            value.toString(),
-            style: const TextStyle(
-                fontSize: 16.0,
-                color: Colors.black87,
-                fontWeight: FontWeight.w600),
-            textAlign: TextAlign.right,
-          ),
-        ),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: Text(
@@ -679,10 +1382,22 @@ class _SearchClientPageState extends State<SearchClientPage> {
             textAlign: TextAlign.center,
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Text(
+            value.toString(),
+            style: const TextStyle(
+                fontSize: 16.0,
+                color: Colors.black87,
+                fontWeight: FontWeight.w600),
+            textAlign: TextAlign.center,
+          ),
+        ),
       ],
     );
   }
 
+//  ========= نافذة عرض تفاصيل العملية ===========
   void _showTransactionDetails(Map<String, dynamic> transaction) {
     // تحويل النص في صف التاريخ إلى كائن DateTime
     final DateTime parsedDate = DateTime.parse(transaction['date']);
@@ -734,8 +1449,8 @@ class _SearchClientPageState extends State<SearchClientPage> {
                   padding: const EdgeInsets.all(16.0),
                   child: Table(
                     columnWidths: const {
-                      0: FlexColumnWidth(7), // عرض العمود الأول 20%
-                      1: FlexColumnWidth(3), // عرض العمود الثاني 80%
+                      0: FlexColumnWidth(3), // عرض العمود الأول 20%
+                      1: FlexColumnWidth(7), // عرض العمود الثاني 80%
                     },
                     border: TableBorder.all(
                       color: Colors.cyan, // لون الحدود
@@ -808,8 +1523,7 @@ class _SearchClientPageState extends State<SearchClientPage> {
     );
   }
 
-// =========== =====================================================
-// =========== =====================================================
+//  =========  فتح نافذة ملخص العمليات ===========
   void _showSummary() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -904,6 +1618,7 @@ class _SearchClientPageState extends State<SearchClientPage> {
     }
   }
 
+//  ========= انشاء ملف bdf ===========
   Future<void> _generatePDF(BuildContext context) async {
     final pdf = pw.Document();
     // استدعاء الدالة والحصول على القيم
@@ -930,12 +1645,7 @@ class _SearchClientPageState extends State<SearchClientPage> {
               border: pw.Border.all(
                   color: PdfColors.black, width: 2), // مربع حول العناوين
             ),
-            child:
-
-                // =========================================================================
-                // =========================================================================
-
-                pw.Column(
+            child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Row(
@@ -1224,6 +1934,7 @@ class _SearchClientPageState extends State<SearchClientPage> {
     );
   }
 
+// ========= حذف عملية ===========
   void _deleteTransaction(Map<String, dynamic> transaction) async {
     // احصل على معرف العملية
     final int? transactionId = transaction['operation_id'];
@@ -1272,6 +1983,7 @@ class _SearchClientPageState extends State<SearchClientPage> {
     }
   }
 
+//  =========  تعديل عملية ===========
   Future<void> _editTransaction(Map<String, dynamic> transaction) async {
     // التحقق من أن transaction غير null
     if (transaction == null) {
@@ -1321,28 +2033,6 @@ class _SearchClientPageState extends State<SearchClientPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      /*                   // العنوان بخلفية زرقاء
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16.0),
-                      decoration: const BoxDecoration(
-                        color: Colors.cyan,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(12.0),
-                          topRight: Radius.circular(12.0),
-                        ),
-                      ),
-                      child: const Text(
-                        'تعديل العملية',
-                        style: TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                          color: Color.fromARGB(255, 233, 232, 232),
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
- */
                       // العنوان
                       Container(
                         width: double.infinity,
@@ -1370,7 +2060,6 @@ class _SearchClientPageState extends State<SearchClientPage> {
 
                       // مربع بحواف زرقاء
                       Container(
-                        // margin: const EdgeInsets.symmetric(horizontal: 16.0),
                         padding: const EdgeInsets.all(16.0),
                         decoration: BoxDecoration(
                           color: Colors.white,
@@ -1450,67 +2139,12 @@ class _SearchClientPageState extends State<SearchClientPage> {
                           ],
                         ),
                       ),
-/* 
-                          // اختيار نوع العملية (مربع)
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              Row(
-                                children: [
-                                  Transform.scale(
-                                    scale: 1.2,
-                                    child: Radio<String>(
-                                      value: 'إضافة',
-                                      groupValue: selectedType,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          selectedType = value!;
-                                        });
-                                      },
-                                      activeColor: Colors.blue, // لون المربع عند الاختيار
-                                    ),
-                                  ),
-                                  const Text(
-                                    'إضافة',
-                                    style: TextStyle(color: Colors.blue),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                children: [
-                                  Transform.scale(
-                                    scale: 1.2,
-                                    child: Radio<String>(
-                                      value: 'تسديد',
-                                      groupValue: selectedType,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          selectedType = value!;
-                                        });
-                                      },
-                                      activeColor: Colors.blue, // لون المربع عند الاختيار
-                                    ),
-                                  ),
-                                  const Text(
-                                    'تسديد',
-                                    style: TextStyle(color: Colors.blue),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                      
-
- */
                       const SizedBox(height: 10.0),
 
-                      // =================================================
-                      // =================================================
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           Container(
-                            // padding: const EdgeInsets.all(8.0),
                             padding:
                                 const EdgeInsets.fromLTRB(6.0, 0.0, 6.0, 0.0),
                             decoration: BoxDecoration(
@@ -1585,107 +2219,6 @@ class _SearchClientPageState extends State<SearchClientPage> {
                         color: Colors.cyan,
                       ),
                       const SizedBox(height: 10.0),
-
-                      // =================================================
-                      // =================================================
-
-                      /*                   // مربع أسفل النافذة للأزرار
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16.0),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(12.0),
-                          bottomRight: Radius.circular(12.0),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          ElevatedButton(
-                            onPressed: () async {
-                              // التحقق من صحة المدخلات
-                              if (amountController.text.isEmpty ||
-                                  detailsController.text.isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('يرجى تعبئة جميع الحقول'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                                return;
-                              }
-
-                              try {
-                                print('Attempting to update operation: ID=${transaction['operation_id']}, '
-                                    'Amount=${amountController.text}, Details=${detailsController.text}, '
-                                    'Type=$selectedType');
-                                print('===================================');
-                                final databaseHelper = DatabaseHelper();
-                                int rowsAffected = await databaseHelper.updateOperation(
-                                  transaction['operation_id'], // نفس ID العملية
-                                  double.parse(amountController.text),
-                                  detailsController.text,
-                                  selectedType,
-                                );
-
-                                if (rowsAffected > 0) {
-                                  Navigator.of(context).pop();
-                                  _refreshTransactions();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('تم تعديل العملية بنجاح'),
-                                      backgroundColor: Colors.green,
-                                    ),
-                                  );
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('فشل في تعديل العملية'),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                }
-                              } catch (error) {
-                                print('Error occurred while updating operation: $error');
-                                Navigator.of(context).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('حدث خطأ أثناء تعديل العملية'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue, // لون زر الحفظ
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                            ),
-                            child: const Text(
-                              'حفظ',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.grey, // لون زر الإلغاء
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                            ),
-                            child: const Text(
-                              'إلغاء',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                 */
-                      //  ==============================================================================
-                      // أزرار الحفظ والإلغاء
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
@@ -1784,8 +2317,6 @@ class _SearchClientPageState extends State<SearchClientPage> {
                       ),
 
                       const SizedBox(height: 10.0),
-
-                      //  ==============================================================================
                     ],
                   ),
                 ),
@@ -1796,6 +2327,16 @@ class _SearchClientPageState extends State<SearchClientPage> {
       },
     );
   }
-}
 
-// =  ======================================================================================================
+  /*  bool _isReady = false;
+
+// عندما تصبح جاهزة قم بتحديث الحالة
+  void _setReady() {
+    setState(() {
+      _isReady = true;
+    });
+  }
+ */
+
+// ==================
+}

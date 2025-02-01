@@ -1195,7 +1195,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           Positioned(
             top: 60.0,
             left: 10,
-            right: 10,
+            right: 55.0,
             child: Container(
               constraints: const BoxConstraints(maxHeight: 140),
               decoration: BoxDecoration(

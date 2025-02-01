@@ -42,7 +42,7 @@ class DatabaseHelper {
     )
   ''');
 
-    // إنشاء جدول العمليات
+    // إنشاء جدول العمليات للعملاء
     await db.execute('''
     CREATE TABLE operations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -139,6 +139,92 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+/* 
+  Future<Map<String, double>> getTotalSummary() async {
+    final db = await database;
+
+    // استعلام للحصول على إجمالي المبالغ التي نوعها "إضافة" لجميع العملاء
+    final additionsResult = await db.rawQuery(
+      '''
+    SELECT SUM(o.amount) as totalAdditions
+    FROM operations o
+    WHERE o.type = "إضافة"
+    ''',
+    );
+
+    // استعلام للحصول على إجمالي المبالغ التي نوعها "تسديد" لجميع العملاء
+    final paymentsResult = await db.rawQuery(
+      '''
+    SELECT SUM(o.amount) as totalPayments
+    FROM operations o
+    WHERE o.type = "تسديد"
+    ''',
+    );
+
+    // استخراج القيم من النتائج
+    final totalAdditions =
+        additionsResult.first['totalAdditions'] as double? ?? 0.0;
+    final totalPayments =
+        paymentsResult.first['totalPayments'] as double? ?? 0.0;
+
+    // حساب المبلغ المستحق الكلي
+    final totalOutstanding = totalAdditions - totalPayments;
+
+    return {
+      'totalAdditions': totalAdditions,
+      'totalPayments': totalPayments,
+      'totalOutstanding': totalOutstanding,
+    };
+  }
+ */
+  Future<Map<String, dynamic>> getTotalSummary() async {
+    final db = await database;
+
+    // استعلام للحصول على إجمالي المبالغ التي نوعها "إضافة" لجميع العملاء
+    final additionsResult = await db.rawQuery(
+      '''
+    SELECT SUM(o.amount) as totalAdditions
+    FROM operations o
+    WHERE o.type = "إضافة"
+    ''',
+    );
+
+    // استعلام للحصول على إجمالي المبالغ التي نوعها "تسديد" لجميع العملاء
+    final paymentsResult = await db.rawQuery(
+      '''
+    SELECT SUM(o.amount) as totalPayments
+    FROM operations o
+    WHERE o.type = "تسديد"
+    ''',
+    );
+
+    // استعلام للحصول على عدد العملاء
+    final customersCountResult = await db.rawQuery(
+      '''
+    SELECT COUNT(*) as totalCustomers
+    FROM customers
+    ''',
+    );
+
+    // استخراج القيم من النتائج
+    final totalAdditions =
+        additionsResult.first['totalAdditions'] as double? ?? 0.0;
+    final totalPayments =
+        paymentsResult.first['totalPayments'] as double? ?? 0.0;
+    final totalCustomers =
+        customersCountResult.first['totalCustomers'] as int? ?? 0;
+
+    // حساب المبلغ المستحق الكلي
+    final totalOutstanding = totalAdditions - totalPayments;
+
+    return {
+      'totalAdditions': totalAdditions,
+      'totalPayments': totalPayments,
+      'totalOutstanding': totalOutstanding,
+      'totalCustomers': totalCustomers,
+    };
   }
 
 // إضافة وكيل جديد
@@ -488,6 +574,46 @@ class DatabaseHelper {
     SELECT SUM(o.amount) as totalPayments
     FROM operations o
     INNER JOIN customers c ON o.client_id = c.id
+    WHERE c.name = ? AND o.type = "تسديد"
+    ''',
+      [name],
+    );
+
+    // استخراج القيم من النتائج
+    final totalAdditions = additionsResult.first['totalAdditions'] ?? 0.0;
+    final totalPayments = paymentsResult.first['totalPayments'] ?? 0.0;
+
+    // حساب المبلغ المستحق
+    final outstanding = (totalAdditions as double) - (totalPayments as double);
+
+    return {
+      'totalAdditions': totalAdditions,
+      'totalPayments': totalPayments,
+      'outstanding': outstanding,
+    };
+  }
+
+// ============== ملخص عمليات العميل ===========
+  Future<Map<String, dynamic>> getSummaryAgeentByName(String name) async {
+    final db = await database;
+
+    // استعلام للحصول على إجمالي المبالغ التي نوعها "إضافة"
+    final additionsResult = await db.rawQuery(
+      '''
+    SELECT SUM(o.amount) as totalAdditions
+    FROM agent_operations o
+    INNER JOIN agents c ON o.agent_id = c.id
+    WHERE c.name = ? AND o.type = "قرض"
+    ''',
+      [name],
+    );
+
+    // استعلام للحصول على إجمالي المبالغ التي نوعها "تسديد"
+    final paymentsResult = await db.rawQuery(
+      '''
+    SELECT SUM(o.amount) as totalPayments
+    FROM agent_operations o
+    INNER JOIN agents c ON o.agent_id = c.id
     WHERE c.name = ? AND o.type = "تسديد"
     ''',
       [name],

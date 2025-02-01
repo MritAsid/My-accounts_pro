@@ -938,6 +938,7 @@ class AddTransactionDialog extends StatefulWidget {
   const AddTransactionDialog({Key? key}) : super(key: key);
 
   @override
+  // ignore: library_private_types_in_public_api
   _AddTransactionDialogState createState() => _AddTransactionDialogState();
 }
 
